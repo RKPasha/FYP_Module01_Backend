@@ -3,10 +3,10 @@ const { body, validationResult } = require('express-validator')
 const Router = express.Router()
 const mySqlConnection = require('../connection')
 
-//Get all teachers from DB
+//Get all students from DB
 Router.get('/viewAll', (req, res) => {
   mySqlConnection.query(
-    'SELECT * FROM teacher JOIN person ON teacherId = Id WHERE isDeleted <> 1',
+    'SELECT * FROM student JOIN person ON studentId = Id WHERE isDeleted <> 1',
     (err, rows, fields) => {
       if (!err) {
         res.send(rows)
@@ -50,9 +50,11 @@ const getAge = dateString => {
   return Math.floor(ageInMilliseconds / 1000 / 60 / 60 / 24 / 365) // convert to years
 }
 
-//Add teacher to DB
+//RegEx for regNo
+const regNoRegEx = /^20\d{2}\-(?:[A-Z]{1,3}(?:&(?:[A-Z]{1,3}\-\d{2,3}))|[A-Z]{2,3}\-\d{2,3})/gm
+//Add student to DB
 Router.post(
-  '/addTeacher',
+  '/addStudent',
   [
     body(
       'firstName',
@@ -86,7 +88,13 @@ Router.post(
     body('contact', 'Contact No. is not valid! (Format: 03xxxxxxxxx)')
       .isNumeric()
       .trim()
-      .isLength({ min: 11, max: 11 })
+      .isLength({ min: 11, max: 11 }),
+    body('registrationNo').custom(regNo => {
+      if (!(regNoRegEx.test(regNo.toString()))) {
+        throw new Error('Registration No is not valid! (Format: 20xx-abc-xxx)')
+      }
+      return true
+    })
   ],
   (req, res) => {
     console.log(req.body)
@@ -100,28 +108,28 @@ Router.post(
     const email = req.body.email
     const cnic = req.body.cnic
     const contact = req.body.contact
+    const regNo = req.body.registrationNo
 
     mySqlConnection.query(
       "Set @gender = (Select id from lookup where category = 'GENDER' and value = '" +
         req.body.gender +
-        "' ); Set @designation = (Select id from lookup where category = 'DESIGNATION' and value = '" +
-        req.body.designation +
-        "' ); BEGIN; INSERT INTO person (firstName, lastName, dob, email, cnic, contact, gender) VALUES (?,?,?,?,?,?,@gender); INSERT INTO teacher (teacherId, designation) VALUES(LAST_INSERT_ID(),@designation); COMMIT;",
-      [firstName, lastName, dob, email, cnic, contact],
+        "' ); BEGIN; INSERT INTO person (firstName, lastName, dob, email, cnic, contact, gender) VALUES (?,?,?,?,?,?,@gender); INSERT INTO student (studentId, registrationNo) VALUES(LAST_INSERT_ID(), ?); COMMIT;",
+      [firstName, lastName, dob, email, cnic, contact, regNo],
       (err, result) => {
         if (err) {
           res.send(err)
         } else {
           res.send('Values Inserted')
+          console.log(result)
         }
       }
     )
   }
 )
 
-//Edit teacher from DB
+//Edit student from DB
 Router.put(
-  '/editTeacher',
+  '/editStudent',
   [
     body(
       'firstName',
@@ -155,7 +163,13 @@ Router.put(
     body('contact', 'Contact No. is not valid! (Format: 03xxxxxxxxx)')
       .isNumeric()
       .trim()
-      .isLength({ min: 11, max: 11 })
+      .isLength({ min: 11, max: 11 }),
+    body('registrationNo').custom(regNo => {
+      if (!(regNoRegEx.test(regNo.toString()))) {
+        throw new Error('Registration No is not valid! (Format: 20xx-abc-xxx)')
+      }
+      return true
+    })
   ],
   (req, res) => {
     console.log(req.body)
@@ -170,14 +184,13 @@ Router.put(
     const email = req.body.email
     const cnic = req.body.cnic
     const contact = req.body.contact
+    const regNo = req.body.registrationNo
 
     mySqlConnection.query(
       "Set @gender = (Select id from lookup where category = 'GENDER' and value = '" +
         req.body.gender +
-        "' ); Set @designation = (Select id from lookup where category = 'DESIGNATION' and value = '" +
-        req.body.designation +
-        "' ); BEGIN; UPDATE person SET firstName = ?, lastName = ?, dob = ?, email = ?, cnic = ?, contact = ?, gender = @gender WHERE id = ?; UPDATE teacher SET designation = @designation WHERE teacherId = ?; COMMIT;",
-      [firstName, lastName, dob, email, cnic, contact, id, id],
+        "' ); BEGIN; UPDATE person SET firstName = ?, lastName = ?, dob = ?, email = ?, cnic = ?, contact = ?, gender = @gender WHERE id = ?; UPDATE student SET registrationNo = ? WHERE studentId = ?; COMMIT;",
+      [firstName, lastName, dob, email, cnic, contact, id, regNo, id],
       (err, result) => {
         if (err) {
           console.log(err)
@@ -189,14 +202,13 @@ Router.put(
   }
 )
 
-
-//Delete (Set isDeleted to 1) teacher from DB
-Router.put('/deleteTeacher', (req, res) => {
+//Delete (Set isDeleted to 1) student from DB
+Router.put('/deleteStudent', (req, res) => {
   console.log(req.body)
   const id = req.body.id
 
   mySqlConnection.query(
-    'BEGIN; UPDATE teacher SET isDeleted = 1 WHERE teacherId = ?; COMMIT;',
+    'BEGIN; UPDATE student SET isDeleted = 1 WHERE studentId = ?; COMMIT;',
     [id],
     (err, result) => {
       if (err) {
