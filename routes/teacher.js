@@ -45,10 +45,6 @@ Router.get('/getDesignationId', (req, res) => {
   )
 })
 
-const getAge = dateString => {
-  var ageInMilliseconds = new Date() - new Date(dateString)
-  return Math.floor(ageInMilliseconds / 1000 / 60 / 60 / 24 / 365) // convert to years
-}
 
 //Add teacher to DB
 Router.post(
@@ -71,18 +67,6 @@ Router.post(
     body('email', 'Email is not valid! (Format: abc@xyz.uet.edu.pk)')
       .isEmail()
       .normalizeEmail(),
-    body('dob').custom(dob => {
-      if (getAge(dob.toString()) < 16 || getAge(dob.toString()) > 80) {
-        throw new Error(
-          'Date of Birth is not valid! (Age must be 16 to 80 years.)'
-        )
-      }
-      return true
-    }),
-    body('cnic', 'CNIC is not valid! (Hint: Write without dashes.)')
-      .isNumeric()
-      .trim()
-      .isLength({ min: 13, max: 13 }),
     body('contact', 'Contact No. is not valid! (Format: 03xxxxxxxxx)')
       .isNumeric()
       .trim()
@@ -96,9 +80,7 @@ Router.post(
     }
     const firstName = req.body.firstName
     const lastName = req.body.lastName
-    const dob = new Date(req.body.dob)
     const email = req.body.email
-    const cnic = req.body.cnic
     const contact = req.body.contact
 
     mySqlConnection.query(
@@ -106,8 +88,8 @@ Router.post(
         req.body.gender +
         "' ); Set @designation = (Select id from lookup where category = 'DESIGNATION' and value = '" +
         req.body.designation +
-        "' ); BEGIN; INSERT INTO person (firstName, lastName, dob, email, cnic, contact, gender) VALUES (?,?,?,?,?,?,@gender); INSERT INTO teacher (teacherId, designation) VALUES(LAST_INSERT_ID(),@designation); COMMIT;",
-      [firstName, lastName, dob, email, cnic, contact],
+        "' ); BEGIN; INSERT INTO person (firstName, lastName, email, contact, gender) VALUES (?,?,?,?,@gender); INSERT INTO teacher (teacherId, designation) VALUES(LAST_INSERT_ID(),@designation); COMMIT;",
+      [firstName, lastName, email, contact],
       (err, result) => {
         if (err) {
           res.send(err)
@@ -140,18 +122,6 @@ Router.put(
     body('email', 'Email is not valid! (Format: abc@xyz.uet.edu.pk)')
       .isEmail()
       .normalizeEmail(),
-    body('dob').custom(dob => {
-      if (getAge(dob.toString()) < 16 || getAge(dob.toString()) > 80) {
-        throw new Error(
-          'Date of Birth is not valid! (Age must be 16 to 80 years.)'
-        )
-      }
-      return true
-    }),
-    body('cnic', 'CNIC is not valid! (Hint: Write without dashes.)')
-      .isNumeric()
-      .trim()
-      .isLength({ min: 13, max: 13 }),
     body('contact', 'Contact No. is not valid! (Format: 03xxxxxxxxx)')
       .isNumeric()
       .trim()
@@ -166,9 +136,7 @@ Router.put(
     const id = req.body.id
     const firstName = req.body.firstName
     const lastName = req.body.lastName
-    const dob = new Date(req.body.dob)
     const email = req.body.email
-    const cnic = req.body.cnic
     const contact = req.body.contact
 
     mySqlConnection.query(
@@ -176,8 +144,8 @@ Router.put(
         req.body.gender +
         "' ); Set @designation = (Select id from lookup where category = 'DESIGNATION' and value = '" +
         req.body.designation +
-        "' ); BEGIN; UPDATE person SET firstName = ?, lastName = ?, dob = ?, email = ?, cnic = ?, contact = ?, gender = @gender WHERE id = ?; UPDATE teacher SET designation = @designation WHERE teacherId = ?; COMMIT;",
-      [firstName, lastName, dob, email, cnic, contact, id, id],
+        "' ); BEGIN; UPDATE person SET firstName = ?, lastName = ?, email = ?, contact = ?, gender = @gender WHERE id = ?; UPDATE teacher SET designation = @designation WHERE teacherId = ?; COMMIT;",
+      [firstName, lastName, email, contact, id, id],
       (err, result) => {
         if (err) {
           console.log(err)

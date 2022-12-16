@@ -3,7 +3,7 @@ const connection = mysql.createConnection({
   host: 'localhost',
   user: 'sqluser',
   password: 'password',
-  database: 'fyp_module1',
+  database: 'se_lab_fyp',
   multipleStatements: true
 })
 
